@@ -423,7 +423,6 @@ def main():
     main_window = tk.Tk()
     
     # Viewクラス生成
-    #os.chdir('../00_data/viewer_test')
     current_dir = os.getcwd()
     print(current_dir)
     ViewGUI(main_window, current_dir)
