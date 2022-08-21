@@ -1,5 +1,5 @@
 # GUI_Image_Editor
-Tkinterを使った静止画と動画の簡易編集ソフト
+Tkinterを使った静止画と動画の簡易GUI編集ソフト
 
 ---
 
