@@ -3,7 +3,7 @@ Tkinterを使った静止画と動画の簡易GUI編集ソフト
 
 ---
 
-### Envionment
+### Evaluation
 
 -OS：Windows10
 
@@ -23,6 +23,11 @@ Tkinterを使った静止画と動画の簡易GUI編集ソフト
 1. Open ViewGUI.py
 
 2. Run
+
+---
+
+### How to use
+https://note.com/sa10youch/n/n09824c9b01d5
 
 ---
 
