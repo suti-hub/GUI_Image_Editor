@@ -21,8 +21,6 @@ class ModelImage():
         self.cur_frame = 0
         self.lock = threading.Lock()
         self.video_img = None
-        self.edit_frames = {}
-        self.edit_canvas = {}
         self.interval_limit = 21
         self.output_path = output_path
        
@@ -222,19 +220,18 @@ class ModelImage():
 
         self.ret, self.video_img = self.cap.read()
         if self.ret:
-
             self.draw_video(self.canvas_video, self.video_img, self.canvas_tag)
             self.play_status = True
             self.cur_frame += 1
             h,m,s = self.get_cur_time(self.cur_frame/self.fps)
-            self.callback(self.play_status, self.cur_frame, h,m,s)
+            self.callback(self.play_status, self.cur_frame, h,m,s, self.canvas_tag)
 
         else:
             self.cur_frame = 0
             self.play_status = False
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.cur_frame)
             h,m,s = self.get_cur_time(self.cur_frame/self.fps)
-            self.callback(self.play_status, self.cur_frame, h,m,s)
+            self.callback(self.play_status, self.cur_frame, h,m,s, self.canvas_tag)
         
         return self.ret
     
@@ -328,11 +325,12 @@ class ModelImage():
                 
             else:
                 
-                if self.is_equel(cmd, last_cmd):
-                     ks_cmd, val = self.get_cmd_keyval(cmd)
-                     cont_dict[ks_cmd] += val
-                     last_cmd = cmd
-                else:
+                if self.is_equel(cmd, last_cmd):                  
+                    ks_cmd, val = self.get_cmd_keyval(cmd)
+                    cont_dict[ks_cmd] += val
+                    last_cmd = cmd
+                    
+                else:           
                     pack_cmd = self.get_cmdpack(cont_dict, cmd)
                     edit_command_list.append(pack_cmd)
                     cont_dict = {}
@@ -359,6 +357,7 @@ class ModelImage():
             print('Video/', command)
             if self.cap != None:
                 self.cap.release()
+                
             self.cap = cv2.VideoCapture(fname)
             self.frame_num = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
             self.fps = int(self.cap.get(cv2.CAP_PROP_FPS))
@@ -371,12 +370,10 @@ class ModelImage():
             self.canvas_video = canvas
             self.canvas_tag = canvas_tag
             self.tk_video = {}
-            self.edit_frames = {}
-            self.edit_canvas = {}
             self.video_edit_imgs = {'Video1':None, 'Video2':None}
             self.clear_command_list()
             self.callback = callback
-            self.callback(False, 0, 0,0,0)
+            self.callback(False, 0, 0,0,0, self.canvas_tag)
             
             self.ret, self.video_img = self.cap.read()
             if self.ret:
@@ -486,6 +483,8 @@ class ModelImage():
         fno_ep = max(frame_1, frame_2)
         if fno_sp == fno_ep:
             fno_ep += 1
+            
+        self.save_images = []
         
         name, ext = os.path.splitext(fname)
         fpath = '{}_frame{}_{}.mp4'.format(name, fno_sp, fno_ep)
@@ -503,10 +502,13 @@ class ModelImage():
             if ret:
                 img_cnv = self.edit_video(frame, edit_command_list, args)
                 self.video.write(img_cnv)
+                self.save_images.append(img_cnv)
                 if n % 100 == 0:
                     print('{}/{}'.format(n, self.edit_num))
                 
         self.video.release()
         self.clear_command_list()
         print("Saved: {}".format(fpath))
+        
+        
   

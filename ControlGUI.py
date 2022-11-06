@@ -9,7 +9,7 @@ class ControlGUI():
         self.dir_path = default_path
         self.ext_keys = {'[Photo]':['.png', '.jpg', '.jpeg', '.JPG', '.PNG'], '[Video]':['.mp4']}
         self.target_files = {}
-        self.file_pos = 0
+        self.file_pos_photo = 0
         self.file_pos_video = 0
         self.speed_val = 1
         
@@ -17,8 +17,8 @@ class ControlGUI():
         self.clip_sy = 0
         self.clip_ex = 0
         self.clip_ey = 0
-        self.canvas = {}
-        self.frame = {}
+        self.canvas  = {}
+        self.frame   = {}
         
         self.state_machine = {'Photo':None, 'Video':None}
         
@@ -49,21 +49,24 @@ class ControlGUI():
         if tab == '[Photo]':
             
             if command == 'prev':
-                self.file_pos = self.file_pos - 1            
+                self.file_pos_photo -= 1
+                
             elif command == 'next':
-                self.file_pos = self.file_pos + 1            
+                self.file_pos_photo += 1
+                
             elif command == 'set':
-                self.file_pos = set_pos            
+                self.file_pos_photo = set_pos
+                
             else:   # current
-                self.file_pos = self.file_pos
+                self.file_pos_photo = self.file_pos_photo
             
-            if self.file_pos < 0:
-                self.file_pos = num -1
+            if self.file_pos_photo < 0:
+                self.file_pos_photo = num -1
                 
-            elif self.file_pos >= num:
-                self.file_pos = 0
+            elif self.file_pos_photo >= num:
+                self.file_pos_photo = 0
                 
-            cur_pos = self.file_pos
+            cur_pos = self.file_pos_photo
                 
         else: # '[Video]'
         
@@ -71,20 +74,15 @@ class ControlGUI():
                 self.file_pos_video = set_pos  
             cur_pos = self.file_pos_video
         
-        cur_file = os.path.join(self.dir_path, self.target_files[tab][cur_pos])
-        print('{}/{} {} '.format(cur_pos, num-1, cur_file))
-        return cur_file
+        file_path = os.path.join(self.dir_path, self.target_files[tab][cur_pos])
+        print('{}/{} {} '.format(cur_pos, num-1, file_path))
+        return file_path
     
     # Common(Public)
     def InitCanvas(self, window_canvas_dict):
         
         for ks, canvas in window_canvas_dict.items():      
             self.canvas[ks] = canvas
-            
-        self.photo_canvas = self.canvas['Photo']
-        self.video_canvas = self.canvas['Video1']
-        self.frame['Video1'] = 0
-        self.frame['Video2'] = 0
         
         
     def SetTab(self, select_tab):
@@ -138,7 +136,7 @@ class ControlGUI():
         self.cur_state = {'[Photo]':0, '[Video]':0}
           
 
-    def GetEventState(self, command):
+    def IsTranferToState(self, command):
        
         tab = self.select_tab
         cur_state = self.cur_state[tab]
@@ -149,20 +147,16 @@ class ControlGUI():
         return res  
     
     
-    def SetEventState(self, next_state):
+    def ForceToState(self, command):
         
         tab = self.select_tab
-        print('state_change:{}->{}'.format(self.cur_state[tab], next_state))
+        cur_state = self.cur_state[tab]
+        _, next_state = self.state_table[tab][cur_state][command]
+        print('state_change:{}, {}->{}'.format('True', cur_state, next_state))
         self.cur_state[tab] = next_state
         
-    
-    def GetCurrentState(self):
-        
-        tab = self.select_tab
-        return self.cur_state[tab]
 
-
-    def SetDirlist(self, dir_path):
+    def SetFilelist(self, dir_path):
                 
         self.dir_path = dir_path
         tab = self.select_tab
@@ -172,18 +166,24 @@ class ControlGUI():
         target_ext = self.ext_keys[self.select_tab]
         print(tab, target_ext)
         
-        for fname in file_list:
-            if self.is_target(fname, target_ext):
-                target_files.append(fname)        
+        for file_name in file_list:
+            if self.is_target(file_name, target_ext):
+                target_files.append(file_name)        
         
         self.target_files[self.select_tab] = target_files
 
-        cur_file = 'None'
-        if len(target_files) > 0:
-            cur_file = self.get_file('current')
-            print(cur_file)
+        return self.target_files[self.select_tab]
 
-        return self.target_files[self.select_tab], os.path.basename(cur_file)
+
+    def GetCurrentFile(self):
+
+        target_files = self.target_files[self.select_tab]
+        if len(target_files) > 0:
+            file_path = self.get_file('current')
+            return os.path.basename(file_path)
+
+        else:
+            return 'None'
 
     
     def DrawRectangle(self, select_tab, command, pos_y, pos_x):
@@ -201,8 +201,9 @@ class ControlGUI():
             self.clip_ey, self.clip_ex = self.model.GetValidPos(select_tab, self.clip_ey, self.clip_ex)
             
         if select_tab == '[Photo]':
-            self.model.DrawRectangle(self.photo_canvas, self.clip_sy, self.clip_sx, self.clip_ey, self.clip_ex)
-        else:
+            self.model.DrawRectangle(self.canvas['Photo'],  self.clip_sy, self.clip_sx, self.clip_ey, self.clip_ex)
+            
+        else: # '[Video]'
             self.model.DrawRectangle(self.canvas['Video1'], self.clip_sy, self.clip_sx, self.clip_ey, self.clip_ex)
             self.model.DrawRectangle(self.canvas['Video2'], self.clip_sy, self.clip_sx, self.clip_ey, self.clip_ex)
 
@@ -210,15 +211,15 @@ class ControlGUI():
     def Set(self, select_tab, set_pos, callback):
                 
         if select_tab == '[Photo]':
-            fname = self.get_file('set', set_pos)
-            self.model.DrawPhoto(fname, self.photo_canvas, 'None')
-        else:
-            fname = self.get_file('set', set_pos)
+            file_path = self.get_file('set', set_pos)
+            self.model.DrawPhoto(file_path, self.canvas['Photo'], 'None')
+            
+        else: # '[Video]'
+            file_path = self.get_file('set', set_pos)
             self.model.DeleteRectangle(self.canvas['Video1'])
             self.model.DeleteRectangle(self.canvas['Video2'])
-            self.video_tag = 'Video1'
-            self.video_canvas = self.canvas[self.video_tag]                     
-            self.model.SetVideo(fname, self.video_canvas, self.video_tag, 'set', callback)
+            self.video_tag = 'Video1'                   
+            self.model.SetVideo(file_path, self.canvas[self.video_tag], self.video_tag, 'set', callback)
             _, self.frame['Video1'] = self.model.GetVideo('status')
             _, self.frame['Video2'] = self.model.GetVideo('status')   
             print('tag, fno1, fno2',self.video_tag, self.frame['Video1'], self.frame['Video2'])
@@ -232,9 +233,10 @@ class ControlGUI():
             args['ex'], args['ey'] = self.clip_ex, self.clip_ey
                 
         if select_tab == '[Photo]':                 
-            fname = self.get_file('current')
-            self.model.DrawPhoto(fname, self.photo_canvas, command, args=args)
-        else:
+            file_path = self.get_file('current')
+            self.model.DrawPhoto(file_path, self.canvas['Photo'], command, args=args)
+            
+        else: # '[Video]'
             self.play_status, self.frame[self.video_tag] = self.model.GetVideo('status')
             print('tag, fno1, fno2',self.video_tag, self.frame['Video1'], self.frame['Video2'])
             self.model.EditVideo(self.canvas['Video1'], 'Video1', command, self.frame['Video1'], args=args, update=False)
@@ -244,12 +246,13 @@ class ControlGUI():
     def Save(self, select_tab):
                 
         if select_tab == '[Photo]':        
-            fname = self.get_file('current')
-            self.model.SavePhoto(fname)
-        else:
+            file_path = self.get_file('current')
+            self.model.SavePhoto(file_path)
+            
+        else: # '[Video]'
             _, self.frame[self.video_tag] = self.model.GetVideo('status')
-            fname = self.get_file('current')
-            self.model.SaveVideo(fname, self.frame['Video1'], self.frame['Video2'])
+            file_path = self.get_file('current')
+            self.model.SaveVideo(file_path, self.frame['Video1'], self.frame['Video2'])
             print('tag, fno1, fno2',self.video_tag, self.frame['Video1'], self.frame['Video2'])
             self.model.EditVideo(self.canvas['Video1'], 'Video1', 'Undo', self.frame['Video1'])
             self.model.EditVideo(self.canvas['Video2'], 'Video2', 'Undo', self.frame['Video2'])
@@ -260,9 +263,10 @@ class ControlGUI():
     def Undo(self, select_tab, command):
                 
         if select_tab == '[Photo]':
-            fname = self.get_file('current')
-            self.model.DrawPhoto(fname, self.photo_canvas, command)
-        else:
+            file_path = self.get_file('current')
+            self.model.DrawPhoto(file_path, self.canvas['Photo'], command)
+            
+        else: # '[Video]'
             _, self.frame[self.video_tag] = self.model.GetVideo('status')
             print('tag, fno1, fno2',self.video_tag, self.frame['Video1'], self.frame['Video2'])
             self.model.EditVideo(self.canvas['Video1'], 'Video1', 'Undo', self.frame['Video1'])
@@ -273,9 +277,9 @@ class ControlGUI():
     # Photo(Public)
     def DrawPhoto(self, command, set_pos=-1):
                 
-        fname = self.get_file(command, set_pos)
-        self.model.DrawPhoto(fname, self.photo_canvas, 'None')
-        return self.file_pos
+        file_path = self.get_file(command, set_pos)
+        self.model.DrawPhoto(file_path, self.canvas['Photo'], 'None')
+
         
     # Video(Public)
     def InitSpeed(self, speed_text):
@@ -292,14 +296,12 @@ class ControlGUI():
         return speed_text[self.speed_val]
     
     
-    def SetCanvas(self, command, select_canvas):
+    def SetCanvas(self, select_canvas):
 
-        if command == 'set_canvas':
-            self.video_tag = select_canvas
-            self.video_canvas = self.canvas[self.video_tag]
-            self.play_status, self.frame['Video1'] = self.model.GetVideo('status')
-            self.play_status, self.frame['Video2'] = self.model.GetVideo('status')
-            print('canvas->{}, play_status:{}, frame:{}'.format(select_canvas, self.play_status, self.frame[select_canvas]))          
+        self.video_tag = select_canvas
+        self.play_status, self.frame['Video1'] = self.model.GetVideo('status')
+        self.play_status, self.frame['Video2'] = self.model.GetVideo('status')
+        print('canvas->{}, play_status:{}, frame:{}'.format(select_canvas, self.play_status, self.frame[select_canvas]))          
             
     
     def GetVideo(self, command):
@@ -308,6 +310,6 @@ class ControlGUI():
             
             
     def Video(self, command, set_pos=-1):
-        #play/stop/setpos/speed
-        res = self.model.Video(self.video_canvas, self.video_tag, command)
+        # play/stop/setpos/speed
+        res = self.model.Video(self.canvas[self.video_tag], self.video_tag, command)
         return res 
