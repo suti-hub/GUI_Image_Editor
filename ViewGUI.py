@@ -13,7 +13,8 @@ class ViewGUI():
         self.control = ControlGUI(default_path)
         
         # 初期化
-        self.dir_path         = default_path
+        self.dir_path         = None
+        self.save_dirpath     = {'[Photo]':'None', '[Video]':'None'}
         self.label_rotate     = [' 90°','180°','270°']
         self.label_flip       = ['U/D','L/R']
         self.speed_text       = ['x0.5','x1.0','x2.0','x4.0']
@@ -25,13 +26,13 @@ class ViewGUI():
         # メインウィンドウ
         self.window_root = window_root
         # メインウィンドウサイズ指定
-        self.window_root.geometry("800x600")
+        self.window_root.geometry("800x650") # W x H
         # メインウィンドウタイトル
-        self.window_root.title('GUI Image Editor v1.0.1')
+        self.window_root.title('GUI Image Editor v1.1.0')
         
         # サブウィンドウ
         self.window_sub_ctrl1     = tk.Frame(self.window_root, height=300, width=300)
-        self.window_sub_ctrl2     = tk.Frame(self.window_root, height=500, width=300)
+        self.window_sub_ctrl2     = tk.Frame(self.window_root, height=500, width=400)
         
         # Nootebook, Tab生成
         self.window_sub_frame     = tk.Frame(self.window_root, height=590, width=540)
@@ -44,6 +45,8 @@ class ViewGUI():
         #self.notebook.select(self.tab2)
         self.notebook.select(self.tab1)
         self.select_tab           = '[Photo]'
+        #self.select_tab           = '[Video]'
+        
         
         # Photo[tab1]
         self.window_sub_ctrl3     = tk.Frame(self.tab1,  height=120, width=400)
@@ -52,13 +55,16 @@ class ViewGUI():
         self.window_sub_ctrl4     = tk.Frame(self.tab2,  height=120, width=400)
         self.window_video_canvas1 = tk.Canvas(self.tab2, height=192, width=454, bg='gray')
         self.window_video_canvas2 = tk.Canvas(self.tab2, height=192, width=454, bg='gray')
+        self.window_sub_ctrl5     = tk.Frame(self.window_root, height=30, width=400)
+        self.window_sub_ctrl6     = tk.Frame(self.window_root, height=60, width=400)
         
         # オブジェクト
         # StringVar(ストリング)生成
         self.str_dir        = tk.StringVar()
         # IntVar生成 
-        self.radio_intvar1  = tk.IntVar()
-        self.radio_intvar2  = tk.IntVar()
+        self.radio_intvar = []
+        for n in range(3):
+            self.radio_intvar.append(tk.IntVar())
         self.bar_position   = tk.IntVar()
     
         
@@ -72,6 +78,13 @@ class ViewGUI():
         label_flip          = tk.Label(self.window_sub_ctrl2, text='[Flip]')
         label_clip          = tk.Label(self.window_sub_ctrl2, text='[Clip]')
         label_run           = tk.Label(self.window_sub_ctrl2, text='[Final Edit]')
+        label_saveopt       = tk.Label(self.window_sub_ctrl5, text='[Save Option]')
+        label_s5_blk        = tk.Label(self.window_sub_ctrl5, text='')
+        label_ftype         = tk.Label(self.window_sub_ctrl5, text='[EXT]')
+        label_imgsz         = tk.Label(self.window_sub_ctrl6, text='[H,W]')
+        label_fps           = tk.Label(self.window_sub_ctrl6, text='[FPS]')
+        label_msg           = tk.Label(self.window_root,      text='[Message]')
+        self.label_msgtxt   = tk.Label(self.window_root,      text='')
         
         self.label_frame = []
         for n in range(2):
@@ -81,10 +94,10 @@ class ViewGUI():
         # フォルダ選択ボタン生成
         self.button_setdir  = tk.Button(self.window_sub_ctrl1,    text = 'Set Folder', width=10, command=self.event_set_folder) 
         #　テキストエントリ生成
-        self.entry_dir      = tk.Entry(self.window_sub_ctrl1,     text = 'entry_dir',  textvariable=self.str_dir, width=40)
+        self.entry_dir      = tk.Entry(self.window_sub_ctrl1,     text = 'entry_dir',  state='readonly',  textvariable=self.str_dir, width=39)
         self.str_dir.set(self.dir_path)
         # コンボBOX生成
-        self.combo_file     = ttk.Combobox(self.window_sub_ctrl1, text = 'combo_file', value=[], state='readonly', width=30, postcommand=self.event_updatefile)
+        self.combo_file     = ttk.Combobox(self.window_sub_ctrl1, text = 'combo_file', value=[], state='readonly', width=36, postcommand=self.event_updatefile)
         self.combo_file.set('..[select file]')
         self.combo_file.bind('<<ComboboxSelected>>', self.event_selectfile)
         
@@ -96,9 +109,29 @@ class ViewGUI():
         button_clip_start   = tk.Button(self.window_sub_ctrl2, text = 'Try',     width=5, command=self.event_clip_try)
         button_clip_done    = tk.Button(self.window_sub_ctrl2, text = 'Done',    width=5, command=self.event_clip_done)
         
-        # Save/Undoボタン生成
+        # Save/Undo/Dropボタン生成
         button_save         = tk.Button(self.window_sub_ctrl2, text = 'Save',    width=5, command=self.event_save)
         button_undo         = tk.Button(self.window_sub_ctrl2, text = 'Undo',    width=5, command=self.event_undo)
+        self.button_drop    = tk.Button(self.window_sub_ctrl2, text = 'Drop',    width=5, command=self.event_drop)
+
+        # ラジオボタン生成
+        self.ftype      = ['mp4','gif']
+        self.rate_resz  = ['1/1','1/2','1/4']
+        self.rate_fps   = ['1/1','1/4','1/8']
+        radio_ftype = []
+        for val, text in enumerate(self.ftype):
+            radio_ftype.append(tk.Radiobutton(self.window_sub_ctrl5, text=text, value=val, variable=self.radio_intvar[0], command=self.event_ftype))
+        self.radio_intvar[0].set(0)   # 0: mp4, 1: gif
+        
+        radio_imgsz = []
+        for val, text in enumerate(self.rate_resz):
+            radio_imgsz.append(tk.Radiobutton(self.window_sub_ctrl6, text=text, value=val, variable=self.radio_intvar[1]))
+        self.radio_intvar[1].set(0)   # 0: 1/1, 1: 1/2, 2: 1/4
+        
+        radio_fps = []
+        for val, text in enumerate(self.rate_fps):
+            radio_fps.append(tk.Radiobutton(self.window_sub_ctrl6, text=text, value=val, variable=self.radio_intvar[2]))
+        self.radio_intvar[2].set(0)   # 0: 1/2, 1: 1/4, 2: 1/8
 
         # Video 
         # Slide bar(Scale)
@@ -141,7 +174,7 @@ class ViewGUI():
         ## ウィジェット配置
         # サブウィンドウ
         self.window_sub_ctrl1.place     (relx=0.68, rely=0.05)
-        self.window_sub_ctrl2.place     (relx=0.68, rely=0.30)
+        self.window_sub_ctrl2.place     (relx=0.68, rely=0.25)
         self.window_sub_ctrl3.place     (relx=0.30, rely=0.90)
         self.window_sub_ctrl4.place     (relx=0.25, rely=0.93)
         self.window_sub_frame.place     (relx=0.01, rely=0.01)
@@ -159,7 +192,6 @@ class ViewGUI():
         self.combo_file.grid     (row=4, column=1, padx=5, pady=5, sticky=tk.W)
         
         # window_sub_ctrl2
-        label_s2_blk1.grid       (row=1, column=1, padx=5, pady=5, sticky=tk.W)
         label_rotate.grid        (row=2, column=1, padx=5, pady=5, sticky=tk.W)
         self.btn_rotate[0].grid  (row=3, column=1, padx=5, pady=5, sticky=tk.W)
         self.btn_rotate[1].grid  (row=3, column=2, padx=5, pady=5, sticky=tk.W)
@@ -182,6 +214,22 @@ class ViewGUI():
         label_s3_blk2.grid       (row=1, column=4, columnspan=2, padx=5, pady=5, sticky=tk.EW)
         button_next.grid         (row=1, column=3, padx=5, pady=5, sticky=tk.W)
 
+        # window_sub_ctrl5
+        label_saveopt.grid       (row=1, column=1, columnspan=2, padx=5, pady=5, sticky=tk.W)
+        label_ftype.grid         (row=2, column=1, padx=5, pady=5, sticky=tk.EW)
+        radio_ftype[0].grid      (row=2, column=2, padx=5, pady=5, sticky=tk.EW)
+        radio_ftype[1].grid      (row=2, column=3, padx=5, pady=5, sticky=tk.EW)
+        label_s5_blk.grid        (row=2, column=4, padx=5, pady=5, sticky=tk.EW)
+        # window_sub_ctrl6
+        label_imgsz.grid         (row=1, column=1, padx=5, pady=5, sticky=tk.EW)
+        radio_imgsz[0].grid      (row=1, column=2, padx=5, pady=5, sticky=tk.EW)
+        radio_imgsz[1].grid      (row=1, column=3, padx=5, pady=5, sticky=tk.EW)
+        radio_imgsz[2].grid      (row=1, column=4, padx=5, pady=5, sticky=tk.EW)
+        label_fps.grid           (row=2, column=1, padx=5, pady=5, sticky=tk.EW)
+        radio_fps  [0].grid      (row=2, column=2, padx=5, pady=5, sticky=tk.EW)
+        radio_fps  [1].grid      (row=2, column=3, padx=5, pady=5, sticky=tk.EW)
+        radio_fps  [2].grid      (row=2, column=4, padx=5, pady=5, sticky=tk.EW)
+
         # Video
         # Button
         self.button_play.grid    (row=1, column=1, padx=5, pady=5, sticky=tk.E)
@@ -192,18 +240,69 @@ class ViewGUI():
         self.label_frame[0].place(relx=0.44, rely=0.36)
         self.label_frame[1].place(relx=0.44, rely=0.79)
         label_barunit.place      (relx=0.90, rely=0.85)
+        label_msg.place          (relx=0.69, rely=0.90)
+        self.label_msgtxt.place  (relx=0.70, rely=0.94)
         # Slide bar(Scale)
         self.bar_scale.place     (relx=0.08, rely=0.85)
         
         # Init
+        self.save_dirpath['[Photo]'] = default_path
+        self.save_dirpath['[Video]'] = default_path
         canvas_dict = {'Photo':self.window_photo_canvas, 'Video1':self.window_video_canvas1, 'Video2':self.window_video_canvas2}
         self.control.InitCanvas(canvas_dict)
         self.control.SetTab(self.select_tab)
         self.control.SetCanvas('Video1')
         self.control.InitStateMachine()
-        self.button_speed['text'] = self.control.InitSpeed(self.speed_text) 
+        self.button_speed['text'] = self.control.InitSpeed(self.speed_text)
+        self.sub_frame5_display()
 
     
+    # Private
+    def sub_frame5_display(self):
+        
+        if self.select_tab == '[Video]':
+            self.window_sub_ctrl5.place(relx=0.68, rely=0.68)
+            self.button_drop.grid(row=9, column=3, padx=5, pady=5, sticky=tk.W)
+            # [EXT] option: 'gif' ot 'mp4'
+            arg0 = self.ftype[self.radio_intvar[0].get()]
+            if arg0 == 'gif':
+                self.window_sub_ctrl6.place(relx=0.68, rely=0.78)
+        else:
+            self.window_sub_ctrl5.place_forget()
+            self.window_sub_ctrl6.place_forget()
+            self.button_drop.grid_forget()
+    
+            
+    def get_save_args(self):
+        
+        if self.select_tab == '[Video]':
+                        
+            arg0 = self.ftype[self.radio_intvar[0].get()]
+            arg1 = self.rate_resz[self.radio_intvar[1].get()]
+            arg2 = self.rate_fps[self.radio_intvar[2].get()]
+            args = [arg0,arg1,arg2]
+            
+        else:
+            args = []
+            
+        return args
+    
+        
+    def clear_message(self):
+        
+        self.label_msgtxt['text'] = ''
+        
+        
+    def display_tab(self):
+        self.notebook.tab(self.tab1, state='normal')
+        self.notebook.tab(self.tab2, state='normal')
+        
+    def disable_tab(self):
+        # Disable tab which is not selected
+        tab = self.tab2 if self.select_tab == '[Photo]' else self.tab1
+        self.notebook.tab(tab, state='disabled')
+        
+
     # Event Callback
     # Common
     def event_tabchanged(self, event):
@@ -211,26 +310,37 @@ class ViewGUI():
         notebook = event.widget
         self.select_tab = notebook.tab(notebook.select(), 'text')
         self.control.SetTab(self.select_tab)
-        self.combo_file['value'] = self.control.SetFilelist(self.dir_path)
-        file_name = self.control.GetCurrentFile()
-        self.combo_file.set(file_name)
+        self.dir_path = self.save_dirpath[self.select_tab]
+        self.str_dir.set(self.dir_path)
+
+        self.event_updatefile()
+        self.sub_frame5_display()
         print('{}: {}'.format(sys._getframe().f_code.co_name, self.select_tab))
+        
+        self.event_selectfile(None)
         
     
     def event_set_folder(self):
         
-        if self.control.IsTranferToState('dir'):
+        if self.control.IsTransferToState('dir'):
             print(sys._getframe().f_code.co_name)
-            self.dir_path = filedialog.askdirectory(initialdir=self.dir_path, mustexist=True)
+            
+            dir_path = self.save_dirpath[self.select_tab]
+            self.dir_path = filedialog.askdirectory(initialdir=dir_path, mustexist=True)
             self.str_dir.set(self.dir_path)
             self.combo_file['value'] = self.control.SetFilelist(self.dir_path)
+            
             file_name = self.control.GetCurrentFile()
             self.combo_file.set(file_name)
+            self.save_dirpath[self.select_tab] = self.dir_path
+            print(self.save_dirpath[self.select_tab])
+            
+            self.event_selectfile(None)
 
         
     def event_updatefile(self):
         
-        if self.control.IsTranferToState('dir'):
+        if self.control.IsTransferToState('dir'):
             print(sys._getframe().f_code.co_name)
             self.combo_file['value'] = self.control.SetFilelist(self.dir_path)
             file_name = self.control.GetCurrentFile()
@@ -239,22 +349,30 @@ class ViewGUI():
         
     def event_selectfile(self, event):
         
-        if self.control.IsTranferToState('set'):
+        if self.control.IsTransferToState('set'):
             print(sys._getframe().f_code.co_name)
-            set_pos = self.combo_file.current()
-            callback = None
+            self.display_tab()
+            
+            callbacks = None
             if self.select_tab == '[Video]':
                 self.button_speed['text'] = self.control.InitSpeed(self.speed_text)
-                callback = self.update_playstat
-            self.control.Set(self.select_tab, set_pos, callback)
+                callbacks = [self.update_playstat, self.update_savestat]
+            
+            set_pos = self.combo_file.current()
+            result  = self.control.Set(set_pos, callbacks)
+            if not result:
+                self.control.ForceToState('IDLE')
+                
+            self.clear_message()
 
         
     def event_rotate(self, idx):
 
         def check_event():
-            if self.control.IsTranferToState('edit'):
+            if self.control.IsTransferToState('edit'):
+                self.disable_tab()
                 cmd = 'rotate-' + str(idx+1)
-                self.control.Edit(self.select_tab, cmd)
+                self.control.Edit(cmd)
                 print('{} {} {}'.format(sys._getframe().f_code.co_name, idx, cmd))
                 return check_event
             
@@ -264,9 +382,10 @@ class ViewGUI():
     def event_flip(self, idx):
         
         def check_event():
-            if self.control.IsTranferToState('edit'):
+            if self.control.IsTransferToState('edit'):
+                self.disable_tab()
                 cmd = 'flip-' + str(idx+1)
-                self.control.Edit(self.select_tab, cmd)
+                self.control.Edit(cmd)
                 print('{} {} {}'.format(sys._getframe().f_code.co_name, idx, cmd))
                 return check_event
             
@@ -275,54 +394,65 @@ class ViewGUI():
         
     def event_clip_try(self):
         
-        if self.control.IsTranferToState('clip'):
+        if self.control.IsTransferToState('clip'):
+            self.disable_tab()
             print(sys._getframe().f_code.co_name)
         
         
     def event_clip_done(self):
         
-        if self.control.IsTranferToState('done'):
+        if self.control.IsTransferToState('done'):
             print(sys._getframe().f_code.co_name)
-            self.control.Edit(self.select_tab, 'clip_done')
+            self.control.Edit('clip_done')
     
     
     def event_clip_start(self, event):
         
-        if self.control.IsTranferToState('rect'):
+        if self.control.IsTransferToState('rect'):
             print(sys._getframe().f_code.co_name, event.x, event.y)
-            self.control.DrawRectangle(self.select_tab,'clip_start', event.y, event.x)
+            self.control.DrawRectangle('clip_start', event.y, event.x)
     
         
     def event_clip_keep(self, event):
         
-        if self.control.IsTranferToState('rect'):
-            self.control.DrawRectangle(self.select_tab,'clip_keep', event.y, event.x)
+        if self.control.IsTransferToState('rect'):
+            self.control.DrawRectangle('clip_keep', event.y, event.x)
 
         
     def event_clip_end(self, event):
         
-        if self.control.IsTranferToState('rect'):
+        if self.control.IsTransferToState('rect'):
             print(sys._getframe().f_code.co_name, event.x, event.y)
-            self.control.DrawRectangle(self.select_tab,'clip_end', event.y, event.x)
+            self.control.DrawRectangle('clip_end', event.y, event.x)
         
         
     def event_save(self):
         
-        if self.control.IsTranferToState('save|undo'):
+        if self.control.IsTransferToState('save'):
             print(sys._getframe().f_code.co_name)
-            self.control.Save(self.select_tab)
-        
+            
+            if self.select_tab == '[Video]':
+                self.disable_tab()
+            else:
+                self.display_tab()
+            
+            args = self.get_save_args()
+            self.control.Save(args=args)
+
     
     def event_undo(self):
         
-        if self.control.IsTranferToState('save|undo'):
+        if self.control.IsTransferToState('undo'):
             print(sys._getframe().f_code.co_name)
-            self.control.Undo(self.select_tab,'None')
-            
+            self.control.Undo('None')
+            self.display_tab()
+    
+    
     # Photo        
     def event_prev(self):
         
-        if self.control.IsTranferToState('prev'):
+        if self.control.IsTransferToState('prev'):
+            self.display_tab()
             print(sys._getframe().f_code.co_name)
             self.control.DrawPhoto('prev')
             file_name = self.control.GetCurrentFile()
@@ -331,7 +461,8 @@ class ViewGUI():
         
     def event_next(self):
         
-        if self.control.IsTranferToState('next'):
+        if self.control.IsTransferToState('next'):
+            self.display_tab()
             print(sys._getframe().f_code.co_name)
             self.control.DrawPhoto('next')
             file_name = self.control.GetCurrentFile()
@@ -348,7 +479,7 @@ class ViewGUI():
             self.button_play['text']        = 'Play'
             self.label_frame[0]['text']     = 'Time:{:02}:{:02}:{:02}'.format(h,m,s)
             self.label_frame[1]['text']     = 'Time:{:02}:{:02}:{:02}'.format(h,m,s)
-            self.control.ForceToState('stop')
+            self.control.ForceToState('STOP')
             
     
     def update_frameno(self, is_play_status, frame_no, h,m,s, video_tag):
@@ -360,12 +491,25 @@ class ViewGUI():
             self.button_play['text']        = 'Play'
             self.label_frame[0]['text']     = 'frame:{}'.format(0)
             self.label_frame[1]['text']     = 'frame:{}'.format(0)
-            self.control.ForceToState('stop') 
+            self.control.ForceToState('STOP')
+    
+    
+    def update_savestat(self, is_save_status, cur_num, total_num):
+        
+        if is_save_status:
+            progress = (cur_num/total_num)*100
+            self.label_msgtxt['text'] = '{}/{} Saving.. {:.0f} %'.format(cur_num, total_num, progress)
+            
+        else:
+            self.control.ClearCanvas()
+            self.control.ForceToState('STOP')
+            self.clear_message()
+            self.display_tab()
             
     
     def event_update_bar(self, val):
         
-        if self.control.IsTranferToState('speed|bar'):
+        if self.control.IsTransferToState('speed|bar'):
             self.bar_position.set(int(val))
             pos = self.bar_position.get()
             print('{} :{}'.format(sys._getframe().f_code.co_name, pos))
@@ -375,7 +519,7 @@ class ViewGUI():
         
     def event_mouse_select1(self, event):
 
-        if self.control.IsTranferToState('dclick'):
+        if self.control.IsTransferToState('dclick'):
             x, y = event.x, event.y
             print('{} :(x,y)=({},{})'.format(sys._getframe().f_code.co_name, x, y))
             self.control.SetCanvas('Video1')
@@ -383,7 +527,7 @@ class ViewGUI():
     
     def event_mouse_select2(self, event):
 
-        if self.control.IsTranferToState('dclick'):
+        if self.control.IsTransferToState('dclick'):
             x, y = event.x, event.y
             print('{} :(x,y)=({},{})'.format(sys._getframe().f_code.co_name, x, y))
             self.control.SetCanvas('Video2')
@@ -391,11 +535,12 @@ class ViewGUI():
         
     def event_play(self):
 
-        if self.control.IsTranferToState('play'):
+        if self.control.IsTransferToState('play'):
             self.control.Video('play')
             self.button_play['text'] = 'Stop'
+            self.clear_message()
             
-        elif self.control.IsTranferToState('stop'):
+        elif self.control.IsTransferToState('stop'):
             self.control.Video('stop')
             self.button_play['text'] = 'Play'           
             
@@ -404,25 +549,41 @@ class ViewGUI():
 
     def event_step(self):
         
-        if self.control.IsTranferToState('step'):
+        if self.control.IsTransferToState('step'):
             print(sys._getframe().f_code.co_name)
             self.control.Video('step')
         
     
     def event_capture(self):
         
-        if self.control.IsTranferToState('cap'):
+        if self.control.IsTransferToState('cap'):
             print(sys._getframe().f_code.co_name)
             self.control.Video('capture')
         
     
     def event_speed(self):
         
-        if self.control.IsTranferToState('speed|bar'):
+        if self.control.IsTransferToState('speed|bar'):
             self.button_speed['text'] = self.control.UpSpeed(self.speed_text)
             print('{} :{}'.format(sys._getframe().f_code.co_name, self.button_speed['text']))
             command = 'speed-' + self.button_speed['text']
             self.control.Video(command)
+    
+    
+    def event_drop(self):
+        
+        if self.control.IsTransferToState('drop'):
+            print(sys._getframe().f_code.co_name)
+            self.control.Video('drop')
+            
+    
+    def event_ftype(self):
+        
+        arg0 = self.ftype[self.radio_intvar[0].get()]
+        if arg0 == 'mp4':
+            self.window_sub_ctrl6.place_forget()
+        else:
+            self.window_sub_ctrl6.place(relx=0.68, rely=0.78)
 
 
 def main():
